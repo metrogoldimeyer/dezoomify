@@ -26,7 +26,7 @@ failed to process.
 ## Supported zoomable image formats
 The following formats are supported by dezoomify:
  * [Zoomify](http://www.zoomify.com/) : Most common zoomable image format. *dezoomify* used to support only this, hence the name.
- * [Google ArtProject](https://youtu.be/D1EOJr11bvo) : 14 Masterpieces from the Prado museum in GigaPixel.
+ * [Google ArtProject](https://youtu.be/D1EOJr11bvo) : 14 Masterpieces from the Prado museum in GigaPixel, (with zoom selection to download).
    ![Prado screenshot image](./screenshots/prado.png)
  * [Deep Zoom](http://en.wikipedia.org/wiki/Deep_Zoom) : Zoomable image format created by Microsoft. Dezoomify has a special support for the following websites that use *Deep Zoom*:
    * The [British Library](http://www.bl.uk/)
