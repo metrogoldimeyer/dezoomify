@@ -78,7 +78,7 @@ input#url {
 	box-shadow:0 0 3px #aaa;
 	height:2.5em;
 	border-radius: 5px;
-	font-size: 1.2em;
+	font-size: 1em;
 }
 input#url:focus {
 	box-shadow:0 0 10px #aaf;
