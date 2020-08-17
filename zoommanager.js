@@ -15,11 +15,15 @@ UI.canvas = document.getElementById("rendering-canvas");
 UI.dezoomers = document.getElementById("dezoomers");
 UI.ratio = 1;
 UI.MAX_CANVAS_AREA = 268435456; // 2^14 x 2^14
+UI.data = [];
 
 /**
 Adjusts the size of the image, so that is fits page width or page height
 **/
-UI.changeSize = function () {
+UI.changeSizeCanvas = function () {
+
+return;
+
 	var width = UI.canvas.width, height = UI.canvas.height;
 	switch (this.fit) {
 		case "width":
@@ -53,9 +57,9 @@ UI.setupRendering = function (data) {
 		: 1;
 	UI.canvas.width = data.width * UI.ratio;
 	UI.canvas.height = data.height * UI.ratio;
-	UI.canvas.onclick = UI.changeSize;
+	UI.canvas.onclick = UI.changeSizeCanvas;
 	UI.ctx = UI.canvas.getContext("2d");
-	UI.changeSize();
+	UI.changeSizeCanvas();
 };
 
 /**
@@ -67,6 +71,7 @@ Draw a tile on the canvas, at the given position.
 */
 UI.drawTile = function (tileImg, x, y) {
 	var r = UI.ratio, w = tileImg.width, h = tileImg.height;
+ 
 	UI.ctx.drawImage(tileImg,
 		Math.floor(x * r),
 		Math.floor(y * r),
@@ -136,7 +141,8 @@ Update UI after the image has loaded.
 UI.loadEnd = function () {
 	var status = document.getElementById("status");
 	var a = document.createElement("a");
-	a.download = "dezoomify-result.jpg";
+	//a.download = "dezoomify-result.jpg";
+	a.download = "dezoomify-result-zoom-" + UI.data.maxZoomLevel + ".jpg";
 	a.href = "#";
 	a.textContent = "Converting image...";
 	a.className = "button";
@@ -187,7 +193,6 @@ UI.setDezoomer = function (dezoomerName) {
 	document.getElementById("dezoomer-" + dezoomerName).checked = true;
 }
 
-
 /**
 Contains helper functions for dezoomers
 @class
@@ -212,9 +217,31 @@ ZoomManager.error = function (errmsg) {
 ZoomManager.updateProgress = function (progress, msg) {
 	UI.updateProgress(progress, msg);
 };
+
+function crop(x, y, xDif, yDif, yinv){
+	UI.canvas.width = xDif;
+	UI.canvas.height = yDif;
+    UI.ctx.drawImage(img, x, yinv, xDif, yDif, 0, 0, xDif, yDif);
+}
+
 ZoomManager.loadEnd = function () {
+	if (UI.data.widthReal && UI.data.heightReal) {
+		var wn = UI.data.widthReal,
+			hn = UI.data.heightReal,
+			empty_pels_x=UI.data.width - wn,
+			empty_pels_y=UI.data.height - hn;
+		var imageData = UI.ctx.getImageData(0, empty_pels_y, wn, hn);
+		UI.canvas.width=wn;
+		UI.canvas.height=hn;
+		UI.ctx.putImageData(imageData, 0, 0);
+	}
 	UI.loadEnd();
 }
+
+UI.changeSizeCanvasCrop = function (w, h) {
+	UI.canvas.style.width = w + "px";
+	UI.canvas.style.height = h + "px";
+};
 
 /**
 Start listening for tile loads
@@ -228,8 +255,12 @@ ZoomManager.startTimer = function () {
 		slow down the all process to update the UI too often.*/
 		var loaded = ZoomManager.status.loaded, total = ZoomManager.status.totalTiles;
 		if (loaded !== wasLoaded) {
+			//var z = UI.data.maxZoomLevel;
+			//z = UI.zoomDL;
 			// Update progress if new tiles were loaded
-			ZoomManager.updateProgress(100 * loaded / total, "Loading the tiles...");
+			//ZoomManager.updateProgress(100 * loaded / total, "Loading the tiles...");
+			//ZoomManager.updateProgress(100 * loaded / total, "Loading the tiles... of zoom " + z);
+			ZoomManager.updateProgress(100 * loaded / total, "Loading the tiles... of zoom " + UI.data.maxZoomLevel);
 			wasLoaded = loaded;
 		}
 		if (loaded >= total) {
@@ -249,6 +280,8 @@ ZoomManager.readyToRender = function (data) {
 		console.log("Only one dezoom can be active at a time", data);
 		return;
 	}
+
+	UI.data = data;
 
 	data.nbrTilesX = data.nbrTilesX || Math.ceil(data.width / data.tileSize);
 	data.nbrTilesY = data.nbrTilesY || Math.ceil(data.height / data.tileSize);
@@ -323,6 +356,7 @@ ZoomManager.addTile = function addTile(url, x, y, ntries) {
 	//Request a tile from the server and display it once it loaded
 	ntries = ntries | 0; // Number of time the tile has already been requested
 	var img = new Image;
+	img.crossOrigin = 'anonymous';
 	img.addEventListener("load", function () {
 		UI.drawTile(img, x, y);
 		ZoomManager.status.loaded++;
@@ -343,7 +377,7 @@ ZoomManager.addTile = function addTile(url, x, y, ntries) {
 		if (ZoomManager.cookies.length > 0) {
 			url += "&cookies=" + encodeURIComponent(ZoomManager.cookies);
 		}
-		img.crossOrigin = "anonymous";
+		img.crossOrigin = "Anonymous";
 	}
 	img.src = url;
 };
@@ -390,7 +424,9 @@ ZoomManager.getFile = function (url, params, callback) {
 	if (url.match(/%[a-zA-Z0-9]{2}/) === null) url = encodeURI(url);
 	// We pass the URL itself as a query parameter, so we have to re-encode it
 	var codedurl = encodeURIComponent(url);
-	var requesturl = PHPSCRIPT + "?url=" + codedurl;
+	//var requesturl = PHPSCRIPT + "?url=" + codedurl;
+	var requesturl = PHPSCRIPT ? PHPSCRIPT + "?url=" + codedurl : codedurl;
+	// http://192.168.1.36/cgi-bin/redirect.pl?url=https://artsandculture.google.com/asset/the-bedroom-vincent-van-gogh/KwF-AdF1REQl6w
 	if (ZoomManager.cookies.length > 0) {
 		requesturl += "&cookies=" + encodeURIComponent(ZoomManager.cookies);
 	}
@@ -536,6 +572,11 @@ Set the active dezoomer
 ZoomManager.setDezoomer = function (dezoomer) {
 	ZoomManager.dezoomer = dezoomer;
 	UI.setDezoomer(dezoomer.name);
+	if (dezoomer.urlsdef) {
+		dezoomer.mkSelectUrlsDef();
+	} else if (document.getElementById("urlsdefDezoomer")) {
+		document.getElementById("urlsdefDezoomer").remove();
+	}
 }
 
 ZoomManager.reset = function () {
